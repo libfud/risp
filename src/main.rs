@@ -6,17 +6,17 @@
 extern crate libc;
 
 use libc::c_char;
-use std::c_str::Cstring;
+use std::c_str::CString;
 
-#[link(name = "readline")]
+#[link(name = "linenoise")]
 extern {
-    fn readline(p: *c_char) -> *c_char;
-    fn add_history(l: *c_char);
+    fn linenoise(p: *c_char) -> *c_char;
+    fn linenoiseHistoryAdd(l: *c_char);
 }
 
-/// Attempts to read input from a user using readline. Returns an option,
+/// Attempts to read input from a user using linenoise. Returns an option,
 /// Some(StrBuf) for success, or None if EOF (^D) is entered.
-pub fn rust_readline(prompt: &str) -> Option<StrBuf>
+pub fn rust_linenoise(prompt: &str) -> Option<StrBuf>
 {
     if prompt.len() == 0 {
         return None
@@ -26,7 +26,7 @@ pub fn rust_readline(prompt: &str) -> Option<StrBuf>
 
     c_prompt.with_ref(|c_buf| {
         unsafe {
-            let ret_str = CString::new(readline(c_buf), true);
+            let ret_str = CString::new(linenoise(c_buf), true);
             if ret_str.is_not_null() {
                 ret_str.as_str().map(|ret_str| ret_str.to_strbuf())
             } else {
@@ -36,7 +36,7 @@ pub fn rust_readline(prompt: &str) -> Option<StrBuf>
     })
 }
 
-/// Adds a string to a readline history.
+/// Adds a string to a history buffer.
 pub fn rust_add_history(line: &str) {
     if line.len() == 0 {
         return
@@ -45,7 +45,7 @@ pub fn rust_add_history(line: &str) {
     let c_line = line.to_c_str();
     c_line.with_ref(|c_line| {
         unsafe {
-            add_history(c_line);
+            linenoiseHistoryAdd(c_line);
         }
     });
 }
@@ -53,11 +53,11 @@ pub fn rust_add_history(line: &str) {
 fn main()
 {
     loop {
-        let expr = match rust_readline(">>> ") {
+        let expr = match rust_linenoise(">>> ") {
             Some(val)   => { val.to_str() },
             None    => { continue }
         };
-        rust_add_histor(expr);
+        rust_add_history(expr);
 
         match expr.trim() {
             "(exit)" | "exit" | ",q"    => { break },
