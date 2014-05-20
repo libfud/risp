@@ -70,5 +70,5 @@ pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
 
         //Character literals
         if word.len() == 3 && word.starts_with("'") && word.ends_with("'") {
-            tokens.push(Literal(Character(word.chars().next().next().unwrap())));
+            tokens.push(Literal(Character(word.chars().nth(1).unwrap())));
         }
