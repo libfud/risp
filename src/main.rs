@@ -8,7 +8,7 @@ extern crate libc;
 use libc::c_char;
 use std::c_str::CString;
 
-//pub mod read;
+pub mod interp;
 
 #[link(name = "linenoise")]
 extern {
@@ -84,6 +84,9 @@ fn main() {
 
             loop {
                 let (lparens, rparens, okay_expr_tmp) = count_parens(expr.as_slice());
+                if lparens == 0 && rparens == 0 && expr.len() > 1 {
+                    break
+                }
 
                 if okay_expr_tmp == false {
                     okay_expr = false;
