@@ -2,9 +2,11 @@
 
 use self::basictype::BasicType;
 use self::operator::OperatorType;
+use self::read::tokenize;
 
 pub mod basictype;
 pub mod operator;
+pub mod read;
 
 #[deriving(Show)]
 #[deriving(Clone)]

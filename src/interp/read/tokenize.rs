@@ -1,19 +1,20 @@
 //! Tokenizes input strings.
 
-use super::{SExpr, Cons, Nil, DataType, Operator, Literal, car, cdr};
-use super::basictype::{BasicType, Boolean, Character, Number, String, Symbol};
-use super::basictype::{NumericType, Floating, Integer};
-use super::operator::OperatorType;
+use super::super::basictype::{BasicType, Boolean, Character, Number, String};
+use super::super::basictype::{Floating, Integer};
+use super::super::operator::OperatorType;
+use super::super::operator;
 
+#[deriving(Show)]
 pub enum Token {
     LParen,
     RParen,
     Operator(OperatorType),
     Literal(BasicType),
-    Symbol
+    Symbol(StrBuf)
 }
 
-pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
+pub fn tokenize(expr: &str) -> Result<Vec<Token>, StrBuf> {
     let mut tokens = Vec::new();
 
     let mut i = 0;
@@ -46,7 +47,7 @@ pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
         //Discard dangling parens
         let word = word.slice(0, word.find(|c: char| c == ')').unwrap_or(word.len()));
 
-        match operator::From_str(word) {
+        match operator::from_str(word) {
             Some(op_type)   => {
                 tokens.push(Operator(op_type));
                 i += word.len();
@@ -71,14 +72,14 @@ pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
         }
 
         //Character literals
-        if word.len() >= 2 && word.starts_with("\\#") && word.slice_from(1).starts_with("\\") {
+        if word.len() >= 2 && word.starts_with("#\\") {
             match word.len() {
                 2   => tokens.push(Literal(Character(' '))),
                 3   => tokens.push(Literal(Character(word.chars().nth(2).unwrap()))),
                 _   => match word.slice_from(2) {
                     "space"     => tokens.push(Literal(Character(' '))),
                     "newline"   => tokens.push(Literal(Character('\n'))),
-                    _           = {}
+                    _           => {}
                 }
             }
 
@@ -88,21 +89,25 @@ pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
 
         //String literals
         if word.starts_with("\"") {
-            let str_len = match expr.slice_from(i).find(|c: char| c == '\"') {
+            let str_len = match slice.slice_from(1).find(|c: char| c == '\"') {
                 Some(x) => x,
                 None    => {
-                    return Err("Unterminated quote!")
+                    return Err("Unterminated quote!".to_strbuf())
                 }
             };
-
-            tokens.push(Literal(String(expr.slice(i + 1, i + str_len + 1).to_strbuf())));
+           
+            tokens.push(Literal(String(slice.slice(1, str_len).to_strbuf())));
             i += str_len + 2; //add one to get to the next double quote, add one to escape that
             continue;
         }
 
         //Symbols/variables
         match word.chars().next().unwrap() {
-            'a'..'z'|'A'..'Z'|'_'|'*'   => tokens.push(Literal(Symbol(word))),
+            'a'..'z'|'A'..'Z'|'_'|'*'   => { 
+                tokens.push(Symbol(word.to_strbuf()));
+                i += word.len();
+                continue;
+            }
             _   => {} //do nothing
         };
 
@@ -122,7 +127,11 @@ pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
         match (negative_counter, radix_point_counter) {
             (0, 0) | (1, 0) => {
                 match from_str::<int>(word) {
-                    Some(x) => tokens.push(Literal(Number(Integer(x)))),
+                    Some(x) => {
+                        tokens.push(Literal(Number(Integer(x))));
+                        i += word.len();
+                        continue;
+                    }
                     None    => {
                         return Err("Misplaced negative sign!".to_strbuf())
                     }
@@ -131,7 +140,11 @@ pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
 
             (0, 1) | (1, 1) => {
                 match from_str::<f64>(word) {
-                    Some(x) => tokens.push(Literal(Number(Floating(x)))),
+                    Some(x) => {
+                        tokens.push(Literal(Number(Floating(x))));
+                        i += word.len();
+                        continue;
+                    }
                     None    => {
                         return Err("Misplaced negative sign!".to_strbuf())
                     }

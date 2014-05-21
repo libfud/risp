@@ -1,10 +1,9 @@
 //! A parent module
 
-use self::basictype::BasicType;
-use self::operator::OperatorType;
+use super::basictype::BasicType;
+use super::operator::OperatorType;
 
-pub mod basictype;
-pub mod operator;
+pub mod tokenize;
 
 #[deriving(Show)]
 pub enum SExpr {
@@ -12,6 +11,7 @@ pub enum SExpr {
     Nil,
 }
 
+#[deriving(Show)]
 pub enum DataType {
     Operator(OperatorType),
     Literal(BasicType)

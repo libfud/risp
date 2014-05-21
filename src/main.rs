@@ -7,6 +7,7 @@ extern crate libc;
 
 use libc::c_char;
 use std::c_str::CString;
+use interp::read::tokenize;
 
 pub mod interp;
 
@@ -112,7 +113,19 @@ fn main() {
 
         match expr.trim() {
             "(exit)" | "exit" | ",q"    => { break },
-            _   => { println!("{}", expr); }
+            _   => { }
+        }
+
+        let tokens = match tokenize::tokenize(expr.trim()) {
+            Ok(stuff)   => stuff,
+            Err(msg)    => {
+                println!("{}", msg);
+                continue;
+            }
+        };
+
+        for token in tokens.iter() {
+            println!("{}", token);
         }
     }
 }
