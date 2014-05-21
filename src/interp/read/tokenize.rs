@@ -9,7 +9,8 @@ pub enum Token {
     LParen,
     RParen,
     Operator(OperatorType),
-    Literal(BasicType)
+    Literal(BasicType),
+    Symbol
 }
 
 pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
@@ -98,6 +99,12 @@ pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
             i += str_len + 2; //add one to get to the next double quote, add one to escape that
             continue;
         }
+
+        //Symbols/variables
+        match word.chars().next().unwrap() {
+            'a'..'z'|'A'..'Z'|'_'|'*'   => tokens.push(Literal(Symbol(word))),
+            _   => {} //do nothing
+        };
 
         //Numeric literals (only machine words for now)
         let mut negative_counter = 0;
