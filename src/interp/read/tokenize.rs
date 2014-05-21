@@ -2,6 +2,7 @@
 
 use super::{SExpr, Cons, Nil, DataType, Operator, Literal, car, cdr};
 use super::basictype::{BasicType, Boolean, Character, Number, String, Symbol};
+use super::basictype::{NumericType, Floating, Integer};
 use super::operator::OperatorType;
 
 pub enum Token {
@@ -55,12 +56,12 @@ pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
 
         //Booleans
         match word {
-            "true"  => {
+            "#t"  => {
                 tokens.push(Literal(Boolean(true)));
                 i += word.len();
                 continue;
             },
-            "false" => {
+            "#f" => {
                 tokens.push(Literal(Boolean(false)));
                 i += word.len();
                 continue;
@@ -69,6 +70,70 @@ pub fn tokenize(expr: &str) -> Result<Vec<Token>>, StrBuf> {
         }
 
         //Character literals
-        if word.len() == 3 && word.starts_with("'") && word.ends_with("'") {
-            tokens.push(Literal(Character(word.chars().nth(1).unwrap())));
+        if word.len() >= 2 && word.starts_with("\\#") && word.slice_from(1).starts_with("\\") {
+            match word.len() {
+                2   => tokens.push(Literal(Character(' '))),
+                3   => tokens.push(Literal(Character(word.chars().nth(2).unwrap()))),
+                _   => match word.slice_from(2) {
+                    "space"     => tokens.push(Literal(Character(' '))),
+                    "newline"   => tokens.push(Literal(Character('\n'))),
+                    _           = {}
+                }
+            }
+
+            i += word.len();
+            continue;
         }
+
+        //String literals
+        if word.starts_with("\"") {
+            let str_len = match expr.slice_from(i).find(|c: char| c == '\"') {
+                Some(x) => x,
+                None    => {
+                    return Err("Unterminated quote!")
+                }
+            };
+
+            tokens.push(Literal(String(expr.slice(i + 1, i + str_len + 1).to_strbuf())));
+            i += str_len + 2; //add one to get to the next double quote, add one to escape that
+            continue;
+        }
+
+        //Numeric literals (only machine words for now)
+        let mut negative_counter = 0;
+        let mut radix_point_counter = 0;
+
+        for c in word.chars() {
+            match c {
+                '0'..'9'    => { }, //looks numeric to me
+                '-'         => { negative_counter += 1 },
+                '.'         => { radix_point_counter += 1 },
+                _           => { return Err(("Unrecognized token".to_strbuf())) }
+            }
+        }
+
+        match (negative_counter, radix_point_counter) {
+            (0, 0) | (1, 0) => {
+                match from_str::<int>(word) {
+                    Some(x) => tokens.push(Literal(Number(Integer(x)))),
+                    None    => {
+                        return Err("Misplaced negative sign!".to_strbuf())
+                    }
+                }
+            },
+
+            (0, 1) | (1, 1) => {
+                match from_str::<f64>(word) {
+                    Some(x) => tokens.push(Literal(Number(Floating(x)))),
+                    None    => {
+                        return Err("Misplaced negative sign!".to_strbuf())
+                    }
+                }
+            },
+
+            _   => { return Err("Too many negative signs and/or points!".to_strbuf()) }
+        }
+    }
+
+    Ok(tokens)
+}
