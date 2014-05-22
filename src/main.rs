@@ -4,10 +4,13 @@
 //! A Lisp interpreter.
 
 extern crate libc;
+extern crate getopts;
 
+use std::os;
 use libc::c_char;
 use std::c_str::CString;
 use interp::read::tokenize;
+use getopts::{optopt, getopts};
 
 pub mod interp;
 
@@ -53,6 +56,40 @@ pub fn rust_add_history(line: &str) {
 }
 
 fn main() {
+    let args: Vec<StrBuf> = os::args().iter().map(|x| x.to_strbuf()).collect();
+
+    let program = args.get(0).clone();
+
+    let opts = [
+        optopt("n", "noninteractive", "non-interactive mode", "INPUT STRING"),
+    ];
+
+    let matches = match getopts(args.tail(), opts) {
+        Ok(m)   => { m }
+        Err(f)  => { fail!(f.to_err_msg()) }
+    };
+
+    if matches.opt_present("n") {
+        match matches.opt_str("n") {
+            Some(sexpr) => {
+                let tokens = match tokenize::tokenize(sexpr.to_str().as_slice()) {
+                    Ok(success) => success,
+                    Err(msg)    => {
+                        println!("{}", msg);
+                        return
+                    }
+                };
+                println!("{}", tokens);
+                return
+            }
+            None    => {
+                println!("Bad expr");
+                return
+            }
+        }
+    }
+                
+
     loop {
         let mut expr = match rust_linenoise(">>> ") {
             Some(val)   => { val.to_str() },
