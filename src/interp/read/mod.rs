@@ -4,6 +4,7 @@ use super::basictype::BasicType;
 use super::operator::OperatorType;
 
 pub mod tokenize;
+pub mod translate;
 
 #[deriving(Show)]
 pub enum SExpr {

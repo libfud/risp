@@ -3,10 +3,12 @@
 extern crate num;
 
 use self::num::{rational, bigint};
+use super::SExpr;
 // use self::num::complex;
 
 #[deriving(Show)]
 #[deriving(Clone)]
+#[deriving(Eq)]
 pub enum NumericType {
 //    Complex(complex::Complex),
     BigRational(rational::BigRational),
@@ -19,6 +21,7 @@ pub enum NumericType {
 
 #[deriving(Show)]
 #[deriving(Clone)]
+#[deriving(Eq)]
 pub enum BasicType {
     Boolean(bool),
     Character(char),
@@ -27,5 +30,5 @@ pub enum BasicType {
     Symbol,
     Pair,
     List,
-    Procedure
+    Procedure(Box<SExpr>)
 }

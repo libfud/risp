@@ -5,12 +5,14 @@
 
 extern crate libc;
 extern crate getopts;
+extern crate collections;
 
 use std::os;
 use libc::c_char;
 use std::c_str::CString;
-use interp::read::tokenize;
+use interp::{interp, Environment};
 use getopts::{optopt, getopts};
+use collections::HashMap;
 
 pub mod interp;
 
@@ -56,6 +58,7 @@ pub fn rust_add_history(line: &str) {
 }
 
 fn main() {
+    let mut global_env = Environment{ variables: HashMap::new() };
     let args: Vec<StrBuf> = os::args().iter().map(|x| x.to_strbuf()).collect();
 
     let program = args.get(0).clone();
@@ -72,14 +75,8 @@ fn main() {
     if matches.opt_present("n") {
         match matches.opt_str("n") {
             Some(sexpr) => {
-                let tokens = match tokenize::tokenize(sexpr.to_str().as_slice()) {
-                    Ok(success) => success,
-                    Err(msg)    => {
-                        println!("{}", msg);
-                        return
-                    }
-                };
-                println!("{}", tokens);
+                let msg = interp(sexpr.to_str().as_slice(), &global_env);
+                println!("{}", msg);
                 return
             }
             None    => {
@@ -153,16 +150,7 @@ fn main() {
             _   => { }
         }
 
-        let tokens = match tokenize::tokenize(expr.trim()) {
-            Ok(stuff)   => stuff,
-            Err(msg)    => {
-                println!("{}", msg);
-                continue;
-            }
-        };
-
-        for token in tokens.iter() {
-            println!("{}", token);
-        }
+        let msg = interp(expr.trim(), &global_env);
+        println!("{}", msg);
     }
 }

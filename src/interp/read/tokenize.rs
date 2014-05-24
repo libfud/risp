@@ -6,12 +6,14 @@ use super::super::operator::OperatorType;
 use super::super::operator;
 
 #[deriving(Show)]
+#[deriving(Eq)]
 pub enum Token {
     LParen,
     RParen,
     Operator(OperatorType),
     Literal(BasicType),
-    Symbol(StrBuf)
+    Symbol(StrBuf) //Can be a variable or part of an enumeration
+
 }
 
 pub fn tokenize(expr: &str) -> Result<Vec<Token>, StrBuf> {

@@ -2,6 +2,7 @@
 
 #[deriving(Show)]
 #[deriving(Clone)]
+#[deriving(Eq)]
 pub enum OperatorType {
     Constructor,
     Car,

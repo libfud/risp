@@ -1,18 +1,24 @@
 //! A parent module
 
+extern crate collections;
+
+use self::collections::HashMap;
 use self::basictype::BasicType;
 use self::operator::OperatorType;
-use self::read::tokenize;
+use self::read::tokenize::tokenize;
+use self::read::translate::parse;
 
 pub mod basictype;
 pub mod operator;
 pub mod read;
+pub mod eval;
 
 ///Boxing used to dynamically allocate memory to allow for the recursive data 
 ///structure. Data can be anything - an operator, a number, a string,
 ///anything which has a type.
 #[deriving(Show)]
 #[deriving(Clone)]
+#[deriving(Eq)]
 pub enum SExpr {
     Data(DataType),
     Cons(Box<SExpr>, Box<SExpr>),
@@ -24,9 +30,11 @@ pub enum SExpr {
 ///work yet.
 #[deriving(Show)]
 #[deriving(Clone)]
+#[deriving(Eq)]
 pub enum DataType {
     Operator(OperatorType),
-    Literal(BasicType)
+    Literal(BasicType),
+    Variable(StrBuf)
 }
 
 ///Returns the first atom found in a cell. E.g,
@@ -47,4 +55,25 @@ pub fn cdr(sexpr: &SExpr) -> Result<SExpr, bool> {
         &Cons(_, ref dorsal)    => Ok(Cons(box *dorsal.clone(), box Nil)),
         &Nil | &Data(_)         => Err(false)
     }
+}
+
+pub struct Environment {
+    pub variables: HashMap<StrBuf, SExpr>
+}
+
+pub fn interp(sexpr: &str, mut global_env: &Environment) -> StrBuf {
+
+    let tokens = match tokenize(sexpr) {
+        Ok(valid)   => valid,
+        Err(msg)    => {
+            return msg
+        }
+    };
+
+    let sexpr = match parse(tokens.slice_from(1)) {
+        Ok(good)    => good,
+        Err(msg)    => return msg
+    };
+
+    sexpr.to_str().to_strbuf()
 }
