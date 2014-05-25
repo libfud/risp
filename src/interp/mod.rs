@@ -5,8 +5,8 @@ extern crate collections;
 use self::collections::HashMap;
 use self::basictype::BasicType;
 use self::operator::OperatorType;
-use self::read::tokenize::tokenize;
 use self::read::translate::parse;
+pub use self::read::tokenize::TokenStream;
 
 pub mod basictype;
 pub mod operator;
@@ -63,14 +63,9 @@ pub struct Environment {
 
 pub fn interp(sexpr: &str, mut global_env: &Environment) -> StrBuf {
 
-    let tokens = match tokenize(sexpr) {
-        Ok(valid)   => valid,
-        Err(msg)    => {
-            return msg
-        }
-    };
+    let tokens = TokenStream{slice: sexpr);
 
-    let sexpr = match parse(tokens.slice_from(1)) {
+    let sexpr = match parse(&tokens) {
         Ok(good)    => good,
         Err(msg)    => return msg
     };

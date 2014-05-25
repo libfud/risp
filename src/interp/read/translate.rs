@@ -45,7 +45,7 @@ pub fn find_rparen(tokens: &[Token]) -> Result<uint, StrBuf> {
 }
  
 ///Parse forms an SExpr recursively from an array of tokens
-pub fn parse(tokens: &[Token]) -> Result<Box<SExpr>, StrBuf> {
+pub fn parse(tokens: Iterator) -> Result<Box<SExpr>, StrBuf> {
     if tokens.len() == 0 { //shouldn't be fed a 0 length array
         return Err(TRANSFAIL.to_strbuf())    
     }

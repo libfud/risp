@@ -1,7 +1,7 @@
 //! Tokenizes input strings.
 
 use super::super::basictype::{BasicType, Boolean, Character, Number, String};
-use super::super::basictype::{Floating, Integer};
+use super::super::basictype::{Floating, Integer, UInteger};
 use super::super::operator::OperatorType;
 use super::super::operator;
 
@@ -12,150 +12,181 @@ pub enum Token {
     RParen,
     Operator(OperatorType),
     Literal(BasicType),
-    Symbol(StrBuf) //Can be a variable or part of an enumeration
-
+    Symbol(StrBuf), //Can be a variable or part of an enumeration
+    Invalid,
 }
 
-pub fn tokenize(expr: &str) -> Result<Vec<Token>, StrBuf> {
-    let mut tokens = Vec::new();
+pub struct TokenStream {
+    slice: &str,
+}
 
-    let mut i = 0;
-    let len = expr.len();
+impl Iterator<Token> for TokenStream {
+    fn next(&mut self) -> Option<Token> {
+        if self.slice == 0 {
+            None
+        } else {
+            loop {
+                if self.slice.chars().next().unwrap().is_whitespace() {
+                    self.slice = self.slice.slice_from(1);
+                    continue;
+                } else {
+                    let token = match self.slice.chars().next().unwrap() {
+                        '(' => Some(LParen),
+                        ')' => Some(RParen),
+                        _   => None,
+                    };
+                    if token.is_some() {
+                        self.slice = self.slice.slice_from(1);
+                        return Some(token)
+                    }
 
-    while i < len {
-        let slice = expr.slice_from(i);
+                    let word = self.slice.words().next().unwrap();
+                    //discard dangling parens
+                    let word = word.slice(0, word.find(|c: char| c == ')').unwrap_or(word.len()));
 
-        if slice.chars().next().unwrap().is_whitespace() {
-            i += 1;
-            continue;
-        }
+                    match operator::from_str(word) {
+                        Some(op_type) => {
+                            self.slice = self.slice.slice_from(word.len());
+                            return Some(Operator(op_type))
+                        }
+                        None    => { } //do nothing
+                    }
 
-        //Parentheses
-        let token = match slice.chars().next().unwrap() {
-            '(' => Some(LParen),
-            ')' => Some(RParen),
-            _   => None
-        };
-        if token.is_some() {
-            tokens.push(token.unwrap());
-            i += 1;
-            continue;
-        }
+                    match word {
+                        "#t"    => {
+                            self.slice = self.slice.slice_from(word.len());
+                            return Some(Literal(Boolean(true)))
+                        }
+                        "#f"    => {
+                            self.slice = self.slice.slice_from(word.len());
+                            return Some(Literal(Boolean(false)))
+                        }
+                        _       => { } //do nothing
+                    }
 
-        //operators
-        //there's at least one word, so it's safe to unwrap
-        let word = slice.words().next().unwrap();
-        
-        //Discard dangling parens
-        let word = word.slice(0, word.find(|c: char| c == ')').unwrap_or(word.len()));
+                    //Character literals
+                    if word.len() >= 2 && word.starts_with("#\\") {
+                        match word.len() {
+                            2   => {
+                                self.slice = self.slice.slice_from(word.len());
+                                return Some(Literal(Character(' ')))
+                            }
+                            3   => {
+                                self.slice = self.slice.slice_from(word.len());
+                                return Some(Literal(Character(word.chars().nth(2).unwrap())))
+                            }
+                            _   => match word.slice_from(2) {
+                                "space"     => {
+                                    self.slice = self.slice.slice_from(word.len());
+                                    return Some(Literal(Character(' ')))
+                                }
+                                "newline"   => {
+                                    self.slice = self.slice.slice_from(word.len());
+                                    return Some(Literal(Character('\n')))
+                                }
+                                _           => { }
+                            }
+                        }
+                    }
 
-        match operator::from_str(word) {
-            Some(op_type)   => {
-                tokens.push(Operator(op_type));
-                i += word.len();
-                continue;
-            }
-            _               => { } //do nothing
-        };
+                    //strings
+                    if word.starts_with("\"") {
+                        let str_len = match self.slice.slice_from(1).find(|c: char| c == '\"') {
+                            Some(x) => x,
+                            None    => {
+                                return Some(Invalid)
+                            }
+                        };
+                        self.slice = self.slice.slice_from(str_len + 2);
+                        //add one to account for the quote and one more to get to the next
+                        //character not in the string
+                        return Some(Literal(String(self.slice.slice(1, str_len))))
+                        //avoid the first quote and the last quote
+                    }
 
-        //Booleans
-        match word {
-            "#t"  => {
-                tokens.push(Literal(Boolean(true)));
-                i += word.len();
-                continue;
-            },
-            "#f" => {
-                tokens.push(Literal(Boolean(false)));
-                i += word.len();
-                continue;
-            },
-            _       => { } // do nothing
-        }
+                    //symbols and identifiers
+                    match word.chars().next().unwrap() {
+                        'a'..'z'|'A'..'Z'|'_'|'*'   => {
+                            self.slice = self.slice.slice_from(word.len());
+                            return Some(Symbol(word.to_strbuf()))
+                        }
+                        _   => { }
+                    }
 
-        //Character literals
-        if word.len() >= 2 && word.starts_with("#\\") {
-            match word.len() {
-                2   => tokens.push(Literal(Character(' '))),
-                3   => tokens.push(Literal(Character(word.chars().nth(2).unwrap()))),
-                _   => match word.slice_from(2) {
-                    "space"     => tokens.push(Literal(Character(' '))),
-                    "newline"   => tokens.push(Literal(Character('\n'))),
-                    _           => {}
+                    //Numeric literals
+                    let mut neg_counter = 0;
+                    let mut radix_counter = 0;
+                    let mut literal_flag = false;
+                    let mut literal_spec = 'i';
+                    for c in word.chars() {
+                        match c {
+                            '0'..'9'    => { }
+                            '-'         => neg_counter += 1,
+                            '.'         => radix_counter += 1,
+                            'i'|'u'|'f' => {
+                                if literal_flag == true {
+                                    return Some(Invalid)
+                                } else {
+                                    literal_flag = true;
+                                    literal_spec = c;
+                                }
+                            }
+                            _           => {
+                                return Some(Invalid)
+                            }
+                        }
+                    }
+
+                    //formatted literal
+                    if literal_flag == true {
+                        let token = match literal_spec {
+                            'i' => match from_str::<int>(word) {
+                                Some(x) => Some(Literal(Number(Integer(x)))),
+                                None    => Some(Invalid)
+                            },
+                            'u' => match from_str::<int>(word) {
+                                Some(x) => Some(Literal(Number(UInteger(x)))),
+                                None    => Some(Invalid)
+                            },
+                            'f' => match from_str::<f64>(word) {
+                                Some(x) => Some(Literal(Number(Floating(x)))),
+                                None    => Some(Invalid)
+                            },
+                            _   => Some(Invalid)
+                        };
+
+                        self.slice = self.slice.slice_from(word.len());
+                        return token
+                    }
+
+                    //time to play guess the type
+                    let token = match (neg_counter, radix_counter) {
+                        (1, 0)  => {
+                            match from_str::<int>(word) {
+                                Some(x) => Some(Literal(Number(Integer(x)))),
+                                None    => Some(Invalid)
+                            }
+                        }
+                        (0, 0)  => {
+                            match from_str::<uint>(word) {
+                                Some(x) => Some(Literal(Number(UInteger(x)))),
+                                None    => Some(Invalid)
+                            }
+                        }
+                        (0, 1) | (1, 1) => {
+                            match from_str::<f64>(word) {
+                                Some(x) => Some(Literal(Number(Floating(x)))),
+                                None    => Some(Invalid)
+                            }
+                        }
+
+                        _   => Some(Invalid)
+                    };
+
+                    self.slice = self.slice.slice_from(word.len());
+                    return token
                 }
             }
-
-            i += word.len();
-            continue;
-        }
-
-        //String literals
-        if word.starts_with("\"") {
-            let str_len = match slice.slice_from(1).find(|c: char| c == '\"') {
-                Some(x) => x,
-                None    => {
-                    return Err("Unterminated quote!".to_strbuf())
-                }
-            };
-           
-            tokens.push(Literal(String(slice.slice(1, str_len).to_strbuf())));
-            i += str_len + 2; //add one to get to the next double quote, add one to escape that
-            continue;
-        }
-
-        //Symbols/variables
-        match word.chars().next().unwrap() {
-            'a'..'z'|'A'..'Z'|'_'|'*'   => { 
-                tokens.push(Symbol(word.to_strbuf()));
-                i += word.len();
-                continue;
-            }
-            _   => {} //do nothing
-        };
-
-        //Numeric literals (only machine words for now)
-        let mut negative_counter = 0;
-        let mut radix_point_counter = 0;
-
-        for c in word.chars() {
-            match c {
-                '0'..'9'    => { }, //looks numeric to me
-                '-'         => { negative_counter += 1 },
-                '.'         => { radix_point_counter += 1 },
-                _           => { return Err(("Unrecognized token".to_strbuf())) }
-            }
-        }
-
-        match (negative_counter, radix_point_counter) {
-            (0, 0) | (1, 0) => {
-                match from_str::<int>(word) {
-                    Some(x) => {
-                        tokens.push(Literal(Number(Integer(x))));
-                        i += word.len();
-                        continue;
-                    }
-                    None    => {
-                        return Err("Misplaced negative sign!".to_strbuf())
-                    }
-                }
-            },
-
-            (0, 1) | (1, 1) => {
-                match from_str::<f64>(word) {
-                    Some(x) => {
-                        tokens.push(Literal(Number(Floating(x))));
-                        i += word.len();
-                        continue;
-                    }
-                    None    => {
-                        return Err("Misplaced negative sign!".to_strbuf())
-                    }
-                }
-            },
-
-            _   => { return Err("Too many negative signs and/or points!".to_strbuf()) }
         }
     }
-
-    Ok(tokens)
 }
