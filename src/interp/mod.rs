@@ -44,8 +44,8 @@ pub enum DataType {
 ///returns Cons(box Literal(Number 7), box Nil)
 pub fn car(sexpr: &SExpr) -> Result<SExpr, bool> {
     match sexpr {
-        &Data(ref anterior)     => Ok(Data(anterior.clone())),
-        &Cons(ref anterior, _)  => Ok(*anterior.clone()),
+        &Data(ref anterior)         => Ok(Data(anterior.clone())),
+        &Cons(ref ant, ref dors)    => Ok(Cons(ant.clone(), dors.clone())),
         &Nil        => Err(false) //need to figure out how to represent nil
     }
 }
@@ -72,6 +72,9 @@ pub fn interp(sexpr: StrBuf, mut global_env: &Environment) -> StrBuf {
         Ok(good)    => good,
         Err(msg)    => return msg
     };
+
+    println!("car of sexpr:\n{}\n", car(&*sexpr));
+    println!("cdr of sexpr\n{}\n", cdr(&*sexpr));
 
     sexpr.to_str().to_strbuf()
 }
