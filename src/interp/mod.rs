@@ -44,8 +44,8 @@ pub enum DataType {
 ///returns Cons(box Literal(Number 7), box Nil)
 pub fn car(sexpr: &SExpr) -> Result<SExpr, bool> {
     match sexpr {
-        &Data(ref anterior)         => Ok(Data(anterior.clone())),
-        &Cons(ref ant, ref dors)    => Ok(Cons(ant.clone(), dors.clone())),
+        &Data(ref anterior)     => Ok(Data(anterior.clone())),
+        &Cons(ref anterior, _)  => Ok(*anterior.clone()),
         &Nil        => Err(false) //need to figure out how to represent nil
     }
 }
