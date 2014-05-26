@@ -75,7 +75,7 @@ fn main() {
     if matches.opt_present("n") {
         match matches.opt_str("n") {
             Some(sexpr) => {
-                let msg = interp(sexpr.to_str().as_slice(), &global_env);
+                let msg = interp(sexpr.to_str(), &global_env);
                 println!("{}", msg);
                 return
             }
@@ -89,13 +89,13 @@ fn main() {
 
     loop {
         let mut expr = match rust_linenoise(">>> ") {
-            Some(val)   => { val.to_str() },
+            Some(val)   => { val.as_slice().trim().to_str() },
             None    => { "".to_str() } //I hate ~str 
         };
 
         let mut okay_expr = true;
 
-        if expr.trim().starts_with("(") || expr.len() == 0 {
+        if expr.as_slice().starts_with("(") || expr.len() == 0 {
             let count_parens = |expr: &str| -> (uint, uint, bool) {
                 let (mut lparens, mut rparens) = (0, 0);
                 for c in expr.chars() {
@@ -135,7 +135,8 @@ fn main() {
                     Some(val)   => { val.to_str() },
                     None    => { continue }
                 };
-                expr = expr + "\n" + expr_part;
+                expr = expr.append("\n");
+                expr = expr.append(expr_part.as_slice());
             }
         }
 
@@ -143,14 +144,15 @@ fn main() {
             println!("Bad expression");
             continue
         }
-        rust_add_history(expr);
+        rust_add_history(expr.as_slice());
 
-        match expr.trim() {
+        match expr.as_slice() {
             "(exit)" | "exit" | ",q"    => { break },
             _   => { }
         }
 
-        let msg = interp(expr.trim(), &global_env);
+        let msg = interp(expr.as_slice().trim().to_str(), &global_env);
+        //holy hell I hate this
         println!("{}", msg);
     }
 }

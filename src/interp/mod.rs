@@ -61,11 +61,14 @@ pub struct Environment {
     pub variables: HashMap<StrBuf, SExpr>
 }
 
-pub fn interp(sexpr: &str, mut global_env: &Environment) -> StrBuf {
+pub fn interp(sexpr: StrBuf, mut global_env: &Environment) -> StrBuf {
 
-    let tokens = TokenStream{slice: sexpr);
+    let mut tokens = TokenStream{
+        string_slice: sexpr,
+        string_index: 0
+    };
 
-    let sexpr = match parse(&tokens) {
+    let sexpr = match parse(&mut tokens) {
         Ok(good)    => good,
         Err(msg)    => return msg
     };
