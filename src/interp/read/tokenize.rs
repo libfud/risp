@@ -93,8 +93,8 @@ impl TokenIterator<Token> for TokenStream {
 
             //strings
             if word.starts_with("\"") {
-                let str_len = match self.string_slice.as_slice().slice_from(self.string_index
-                                                                + 1).find(|c: char| c == '\"') {
+                let str_len = match self.string_slice.as_slice().slice_from(self.string_index + 1)
+                                                                .find(|c: char| c == '\"') {
                     Some(x) => x,
                     None    => {
                         return (Some(Invalid), 0)
@@ -103,7 +103,7 @@ impl TokenIterator<Token> for TokenStream {
                 //add one to account for the quote and one more to get to the next
                 //character not in the string
                 return (Some(Literal(String(self.string_slice.as_slice().slice(self.string_index + 1, 
-                                str_len).to_strbuf()))), str_len + 2)
+                        self.string_index + str_len + 1).to_strbuf()))), str_len + 2)
             }
 
             //symbols and identifiers
