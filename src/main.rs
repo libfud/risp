@@ -85,7 +85,8 @@ fn main() {
             }
         }
     }
-                
+    
+    println!("Enter ``,q'', exit or (exit) at any time to exit.");
 
     loop {
         let mut expr = match rust_linenoise(">>> ") {
