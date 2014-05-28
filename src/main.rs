@@ -58,10 +58,12 @@ pub fn rust_add_history(line: &str) {
 }
 
 fn main() {
-    let mut global_env = Environment{ variables: HashMap::new() };
-    let args: Vec<StrBuf> = os::args().iter().map(|x| x.to_strbuf()).collect();
+    let mut global_env = Environment {
+        variables: HashMap::new(),
+        parent: None
+    };
 
-    let program = args.get(0).clone();
+    let args: Vec<StrBuf> = os::args().iter().map(|x| x.to_strbuf()).collect();
 
     let opts = [
         optopt("n", "noninteractive", "non-interactive mode", "INPUT STRING"),

@@ -1,25 +1,30 @@
 //! Operators operating operationally on operands optionally
 
-#[deriving(Show)]
-#[deriving(Clone)]
-#[deriving(Eq)]
+#[deriving(Show, Clone, Eq)]
 pub enum OperatorType {
     Constructor,
     Car,
     Cdr,
+    List,
     Print,
+    Lambda,
+    Set,
+    Quote,
     If,
     Add,
     Sub,
     Mul,
     Div,
     Rem,
-    Even,
+    IsEven,
     Lt,
     LtEq,
     Eq,
+    NEq,
     GtEq,
     Gt,
+    And,
+    Or,
     Null
 }
 
@@ -28,7 +33,11 @@ pub fn from_str(s: &str) -> Option<OperatorType> {
         "cons"  => Some(Constructor),
         "car"   => Some(Car),
         "cdr"   => Some(Cdr),
+        "list"  => Some(List),
         "print" => Some(Print),
+        "lambda"=> Some(Lambda),
+        "set"   => Some(Set),
+        "even?" => Some(IsEven),
         "+"     => Some(Add),
         "-"     => Some(Sub),
         "*"     => Some(Mul),
@@ -36,9 +45,13 @@ pub fn from_str(s: &str) -> Option<OperatorType> {
         "<"     => Some(Lt),
         "<="    => Some(LtEq),
         "="     => Some(Eq),
+        "!="    => Some(NEq),
         ">="    => Some(GtEq),
         ">"     => Some(Gt),
         "if"    => Some(If),
+        "and"   => Some(And),
+        "or"    => Some(Or),
+        "quote" => Some(Quote),
         _       => None
     }
 }

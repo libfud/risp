@@ -1,18 +1,5 @@
-//! The parent module of eval
+pub use self::eval::eval;
 
-/*
-extern crate collections;
-
-use self::collections::HashMap;
-use super::basictype::BasicType;
-use super::SExpr;
+pub mod eval;
 
 
-pub struct Environment {
-    variables: HashMap<StrBuf, SExpr>
-}
-*/
-
-pub fn foo() {
-    println!("bar");
-}

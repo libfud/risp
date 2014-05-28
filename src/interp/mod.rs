@@ -6,7 +6,8 @@ use self::collections::HashMap;
 use self::basictype::BasicType;
 use self::operator::OperatorType;
 use self::read::translate::parse;
-pub use self::read::tokenize::TokenStream;
+use self::read::tokenize::TokenStream;
+use self::eval::eval;
 
 pub mod basictype;
 pub mod operator;
@@ -39,8 +40,7 @@ pub enum DataType {
 
 ///Returns the first atom found in a cell. E.g,
 ///car(Cons(box Data(Operator(Add))), box Data(Literal(Number(5))));
-///returns +, where
-///car(Cons(box Cons(box Literal(Number 7)), box Nil), box Nil)
+///returns +, where car(Cons(box Cons(box Literal(Number 7)), box Nil), box Nil)
 ///returns Cons(box Literal(Number 7), box Nil)
 pub fn car(sexpr: &SExpr) -> Result<SExpr, bool> {
     match sexpr {
@@ -50,15 +50,32 @@ pub fn car(sexpr: &SExpr) -> Result<SExpr, bool> {
     }
 }
 
+///Returns the dorsal region of a cell, or Errs if the SExpr is an atom.
 pub fn cdr(sexpr: &SExpr) -> Result<SExpr, bool> {
     match sexpr {
-        &Cons(_, ref dorsal)    => Ok(Cons(box *dorsal.clone(), box Nil)),
+        &Cons(_, ref dorsal)    => Ok(*dorsal.clone()),
         &Nil | &Data(_)         => Err(false)
     }
 }
 
+///A representation of a frame as a HashMap of SExprs which can either be
+///data in general or SExprs.
 pub struct Environment {
-    pub variables: HashMap<StrBuf, SExpr>
+    pub variables: HashMap<StrBuf, SExpr>,
+    pub parent: Option<Box<Environment>>
+}
+
+///Returns the value of a variable, whether it's a number, string or a procedure,
+///or returns an Error if no such variable is found. It recurses through
+///each parent environment until it reaches the global one.
+pub fn lookup(var: &str, env: &Environment) -> Result<SExpr, StrBuf> {
+    match env.variables.find(&var.to_strbuf()) {
+        Some(val)   => Ok(val.clone()),
+        None        => match env.parent {
+            Some(ref frame) => lookup(var, *frame),
+            None            => Err("Unbound variable: ".to_strbuf().append(var))
+        }
+    }
 }
 
 pub fn interp(sexpr: StrBuf, mut global_env: &Environment) -> StrBuf {
@@ -68,13 +85,16 @@ pub fn interp(sexpr: StrBuf, mut global_env: &Environment) -> StrBuf {
         string_index: 0
     };
 
-    let sexpr = match parse(&mut tokens) {
+    let sexpr = match parse(&mut tokens, global_env) {
         Ok(good)    => good,
         Err(msg)    => return msg
     };
 
-    println!("car of sexpr:\n{}\n", car(&*sexpr));
-    println!("cdr of sexpr\n{}\n", cdr(&*sexpr));
+    let result = match eval(&sexpr, global_env) {
+        Ok(good)    => good,
+        Err(msg)    => return msg
+    };
 
-    sexpr.to_str().to_strbuf()
+    result.to_str().to_strbuf()
+
 }

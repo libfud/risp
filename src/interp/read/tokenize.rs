@@ -1,7 +1,7 @@
 //! Tokenizes input strings.
 
 use super::super::basictype::{BasicType, Boolean, Character, Number, String};
-use super::super::basictype::{Floating, Integer, UInteger};
+use super::super::basictype::{Floating, Integer};
 use super::super::operator::OperatorType;
 use super::super::operator;
 
@@ -44,6 +44,9 @@ impl TokenIterator<Token> for TokenStream {
                 },
                 ' ' => {
                     return (Some(Whitespace), 1)
+                },
+                '\''=> {
+                    return (Some(Operator(operator::Quote)), 1)
                 },
                 _   => {},
             }
@@ -125,7 +128,7 @@ impl TokenIterator<Token> for TokenStream {
                     '0'..'9'    => { }
                     '-'         => neg_counter += 1,
                     '.'         => radix_counter += 1,
-                    'i'|'u'|'f' => {
+                    'i' | 'f'   => {
                         if literal_flag == true {
                             return (Some(Invalid), 0)
                         } else {
@@ -146,10 +149,6 @@ impl TokenIterator<Token> for TokenStream {
                         Some(x) => Some(Literal(Number(Integer(x)))),
                         None    => Some(Invalid)
                     },
-                    'u' => match from_str::<uint>(word) {
-                        Some(x) => Some(Literal(Number(UInteger(x)))),
-                        None    => Some(Invalid)
-                    },
                     'f' => match from_str::<f64>(word) {
                         Some(x) => Some(Literal(Number(Floating(x)))),
                         None    => Some(Invalid)
@@ -162,18 +161,12 @@ impl TokenIterator<Token> for TokenStream {
 
             //time to play guess the type
             let token = match (neg_counter, radix_counter) {
-                (1, 0)  => {
+                (1, 0) | (0, 0) => {
                     match from_str::<int>(word) {
                         Some(x) => Some(Literal(Number(Integer(x)))),
                         None    => Some(Invalid)
                     }
-                }
-                (0, 0)  => {
-                    match from_str::<uint>(word) {
-                        Some(x) => Some(Literal(Number(UInteger(x)))),
-                        None    => Some(Invalid)
-                    }
-                }
+                },
                 (0, 1) | (1, 1) => {
                     match from_str::<f64>(word) {
                         Some(x) => Some(Literal(Number(Floating(x)))),
