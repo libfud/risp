@@ -77,7 +77,7 @@ fn main() {
     if matches.opt_present("n") {
         match matches.opt_str("n") {
             Some(sexpr) => {
-                let msg = interp(sexpr.to_str(), &global_env);
+                let msg = interp(sexpr.to_str(), &mut global_env);
                 println!("{}", msg);
                 return
             }
@@ -154,7 +154,7 @@ fn main() {
             _   => { }
         }
 
-        let msg = interp(expr.as_slice().trim().to_str(), &global_env);
+        let msg = interp(expr.as_slice().trim().to_str(), &mut global_env);
         //holy hell I hate this
         println!("{}", msg);
     }

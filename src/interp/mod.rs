@@ -78,7 +78,7 @@ pub fn lookup(var: &str, env: &Environment) -> Result<SExpr, StrBuf> {
     }
 }
 
-pub fn interp(sexpr: StrBuf, mut global_env: &Environment) -> StrBuf {
+pub fn interp(sexpr: StrBuf, mut global_env: &mut Environment) -> StrBuf {
 
     let mut tokens = TokenStream{
         string_slice: sexpr,

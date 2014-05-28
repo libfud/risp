@@ -1,12 +1,15 @@
+extern crate collections;
+
+use self::collections::HashMap;
+
 use super::super::{SExpr, Cons, Nil, Data, DataType, car, cdr};
 use super::super::{Operator, Literal, Variable};
 use super::super::{Environment, lookup};
 use super::super::basictype::BasicType;
 use super::super::basictype::{Boolean, Character, Number, String, Symbol, Pair, List, Procedure};
 use super::super::basictype::{NumericType, Floating, Integer};
-use super::super::operator::{OperatorType, Add, Mul};
-
-pub fn eval(terms: &Vec<DataType>, mut environment: &Environment) -> Result<BasicType, StrBuf> {
+use super::super::operator::{OperatorType, Add, Mul, Define, Lambda};
+pub fn eval(terms: &Vec<DataType>, mut environment: &mut Environment) -> Result<BasicType, StrBuf> {
     if terms.len() == 0 {
         return Err("No terms!".to_strbuf())
     } else if terms.len() == 1 {
@@ -24,7 +27,14 @@ pub fn eval(terms: &Vec<DataType>, mut environment: &Environment) -> Result<Basi
     }
 
     let operator = match terms.get(0) {
-        &Operator(x) => x,
+        &Operator(x) => match x {
+            Lambda  => return lambda(
+                match terms.get(1) {
+                    &Literal(ref ty) => ty,
+                    _   => return Err("FUCK".to_strbuf())
+                }),
+            _       => x,
+        },
         _   => return Err("idgi yet".to_strbuf())
     };
 
@@ -34,12 +44,17 @@ pub fn eval(terms: &Vec<DataType>, mut environment: &Environment) -> Result<Basi
             Operator(_) => return Err("Operating on an operator? Heresy!".to_strbuf()),
             Literal(ref x)  => operands.push(x.clone()),
             Variable(ref x) => {
-                let var = try!(lookup(x.as_slice(), environment));
-                let val = match var {
-                    Data(x) => try!(eval(&vec!(x.clone()), environment)),
-                    _       => return Err("I can't handle this!".to_strbuf()),
-                };
-                operands.push(val);
+                match operator {
+                    Define  => operands.push(Symbol(x.clone())),
+                    _   => {
+                        let var = try!(lookup(x.as_slice(), environment));
+                        let val = match var {
+                            Data(x) => try!(eval(&vec!(x.clone()), environment)),
+                            _       => return Err("I can't handle this!".to_strbuf()),
+                        };
+                        operands.push(val);
+                    }
+                }
             }
         }
     }
@@ -47,6 +62,7 @@ pub fn eval(terms: &Vec<DataType>, mut environment: &Environment) -> Result<Basi
     match operator {
         Add => add(&operands),
         Mul => mul(&operands),
+        Define => def(&operands, environment),
         _   => Err("idgi yet".to_strbuf())
     }
 }
@@ -136,4 +152,26 @@ pub fn mul(terms: &Vec<BasicType>) -> Result<BasicType, StrBuf> {
     }
 
     Ok(Number(Integer(answer)))
+}
+
+pub fn def(terms: &Vec<BasicType>, mut env: &mut Environment) -> Result<BasicType, StrBuf> {
+    assert!(terms.len() >= 2);
+    let symbol = match terms.as_slice()[0] {
+        Symbol(ref x)   => x.clone(),
+        _   => return Err("nonsymbol assignment detected!".to_strbuf())
+    };
+
+    let value = terms.as_slice()[1].clone();
+
+    env.variables.insert(symbol.clone(), Data(Literal(value)));
+
+    Ok(Symbol(symbol))
+}
+
+pub fn lambda(terms: &BasicType) -> Result<BasicType, StrBuf> {
+    //I don't know, man.
+    match *terms {
+        Procedure(_)    => Ok(terms.clone()),
+        _   => Err("not a lambda!".to_strbuf()),
+    }
 }
